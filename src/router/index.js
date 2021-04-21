@@ -56,36 +56,70 @@ export const constantRoutes = [
   },
 
   {
-    path: '/example',
+    path: '/income_expenditure_info',
     component: Layout,
-    redirect: '/example/table',
-    name: 'Example',
-    meta: { title: 'Example', icon: 'el-icon-s-help' },
     children: [
       {
-        path: 'table',
-        name: 'Table',
-        component: () => import('@/views/table/index'),
-        meta: { title: 'Table', icon: 'table' }
-      },
-      {
-        path: 'tree',
-        name: 'Tree',
-        component: () => import('@/views/tree/index'),
-        meta: { title: 'Tree', icon: 'tree' }
+        path: 'income_expenditure_info',
+        name: 'income_expenditure_info',
+        component: () => import('@/views/form/index'),
+        meta: { title: '全国基本情况', icon: 'form' }
       }
     ]
   },
 
   {
-    path: '/form',
+    path: '/area_division',
+    component: Layout,
+    // redirect: '/example/table',
+    name: 'area_division',
+    meta: { title: '地域划分', icon: 'el-icon-s-help' },
+    children: [
+      {
+        path: 'nationwide_income_expenditure',
+        name: 'nationwide_income_expenditure',
+        component: () => import('@/views/tree/index'),
+        meta: { title: '全国居民人均收支', icon: 'tree' }
+      }, {
+        path: 'town_income_expenditure',
+        name: 'town_income_expenditure',
+        component: () => import('@/views/table/index'),
+        meta: { title: '城镇居民人均收支', icon: 'table' }
+      }
+    ]
+  },
+
+  {
+    path: '/income_coefficient',
+    component: Layout,
+    // redirect: '/engel_coefficient',
+    name: 'income_coefficient',
+    meta: { title: '收入及恩格尔系数', icon: 'el-icon-s-help' },
+    children: [
+      {
+        path: 'residents_income',
+        name: 'residents_income',
+        component: () => import('@/views/table/index'),
+        meta: { title: '居民人均可支配', icon: 'table' }
+      },
+      {
+        path: 'urban_income',
+        name: 'urban_income',
+        component: () => import('@/views/tree/index'),
+        meta: { title: '城乡居民家庭人均', icon: 'tree' }
+      }
+    ]
+  },
+
+  {
+    path: 'savings_balance',
     component: Layout,
     children: [
       {
-        path: 'index',
-        name: 'Form',
-        component: () => import('@/views/form/index'),
-        meta: { title: 'Form', icon: 'form' }
+        path: 'savings_balance',
+        name: 'savings_balance',
+        component: () => import('@/views/tree/index'),
+        meta: { title: '储蓄存款', icon: 'tree' }
       }
     ]
   },
@@ -145,17 +179,6 @@ export const constantRoutes = [
         component: () => import('@/views/nested/menu2/index'),
         name: 'Menu2',
         meta: { title: 'menu2' }
-      }
-    ]
-  },
-
-  {
-    path: 'external-link',
-    component: Layout,
-    children: [
-      {
-        path: 'https://panjiachen.github.io/vue-element-admin-site/#/',
-        meta: { title: 'External Link', icon: 'link' }
       }
     ]
   },
