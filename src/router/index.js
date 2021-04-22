@@ -62,7 +62,7 @@ export const constantRoutes = [
       {
         path: 'income_expenditure_info',
         name: 'income_expenditure_info',
-        component: () => import('@/views/form/index'),
+        component: () => import('@/views/chart/index'),
         meta: { title: '全国基本情况', icon: 'form' }
       }
     ]
