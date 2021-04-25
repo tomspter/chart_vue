@@ -1,8 +1,10 @@
 <template xmlns:el-col="http://www.w3.org/1999/html">
   <div>
-    <el-row type="flex" align="middle">
+    <!--    搜索区域-->
+    <el-row type="flex" align="middle" style="margin-top: 20px">
+      <el-col :span="1" />
       <el-col :span="4">
-        <el-select v-model="timeSelect" placeholder="时间">
+        <el-select v-model="timeSelect" placeholder="时间跨度选择">
           <el-option
             v-for="item in timeOptions"
             :key="item.value"
@@ -11,11 +13,11 @@
           />
         </el-select>
       </el-col>
+      <el-col :span="1">图表查看</el-col>
       <el-col :span="6">
         <el-checkbox-group v-model="checkedChart" :max="1">
-          <el-checkbox-button v-for="item in checkboxLabel" :key="item.value" :label="item.value">{{
-            item.label
-          }}
+          <el-checkbox-button v-for="item in checkboxLabel" :key="item.value" :label="item.value">
+            {{ item.label }}
           </el-checkbox-button>
         </el-checkbox-group>
       </el-col>
@@ -27,6 +29,7 @@
           @change="tableChange"
         />
       </el-col>
+      <el-col :span="1" />
       <el-col :span="2">
         <el-select v-model="sheetSelect" placeholder="报表管理" @change="sheetChange">
           <el-option
@@ -37,51 +40,57 @@
           />
         </el-select>
       </el-col>
+      <el-col :span="3" />
       <el-col :span="2">
         <el-button type="primary" round icon="el-icon-search" @click="initData">搜索</el-button>
       </el-col>
     </el-row>
+    <!--    图表层-->
     <el-row v-show="showChart" style="margin-top: 20px">
       <el-col :span="20">
         <div id="chart" ref="chart" style="width: 100%;height: 600px" />
       </el-col>
       <el-col :span="4">
-        <el-row>
+        <!--        右侧功能栏-->
+        <el-row type="flex" align="middle">
           <el-col :span="12">
             <el-switch
+              v-model="changeChartDirection"
               active-text="行展示"
               inactive-text="列展示"
             />
           </el-col>
           <el-col :span="12">
-            <el-button @click="chartReback(checkedChart[0])">还原</el-button>
+            <el-button plain size="medium" type="primary" icon="el-icon-refresh" @click="chartReback(checkedChart[0])">
+              还原
+            </el-button>
           </el-col>
         </el-row>
-        <el-divider />
-        <p>横坐标标签</p>
+        <el-divider>横坐标标签</el-divider>
         <el-tag
           v-for="item in yLabelList"
           :type="findGCTag(item)?'success':'info'"
           closable
+          style="margin-right: 10px;margin-bottom: 10px"
           @close="closeTag(item,'y')"
         >{{ item }}
         </el-tag>
-        <el-divider />
-        <p>纵坐标标签</p>
+        <el-divider>纵坐标标签</el-divider>
         <el-tag
           v-for="item in Object.values(xLabelMap)"
           :type="findGCTag(item)?'success':'info'"
           closable
+          style="margin-right: 50px;margin-bottom: 10px"
           @close="closeTag(item,'x')"
         >{{ item }}
         </el-tag>
       </el-col>
     </el-row>
-    <el-table v-if="isOk" :data="chartData">
-      <!--      <el-table-column type="selection" align="center"></el-table-column>-->
+    <!--    表格-->
+    <el-table v-if="isOk" :data="chartData" style="margin-top: 20px" stripe border>
       <el-table-column prop="e_yAxis" label="年份" align="center" sortable />
       <el-table-column
-        v-for="item in new Array(7).keys()"
+        v-for="item in new Array(Object.values(xLabelMap).length).keys()"
         :key="item"
         :prop="`xLabel${item}`"
         :label="Object.values(xLabelMap)[parseInt(item)]"
@@ -89,16 +98,28 @@
         sortable
       />
     </el-table>
+    <!--    图表编辑弹窗-->
     <el-dialog
-      title="编辑"
+      title="行列编辑"
       :visible.sync="sheetEditVisible"
       :before-close="beforeDialogClose"
-      width="40%"
+      width="50%"
       destroy-on-close
     >
-      <el-radio v-model="sheetEditRC" label="xAxis">行</el-radio>
-      <el-radio v-model="sheetEditRC" label="yAxis">列</el-radio>
-      <el-transfer v-model="sheetEditModel" :data="sheetEditData" />
+      <div style="margin-bottom: 20px">
+        <el-radio v-model="sheetEditRC" label="xAxis">行</el-radio>
+        <el-radio v-model="sheetEditRC" label="yAxis">列</el-radio>
+      </div>
+      <el-transfer
+        v-model="sheetEditModel"
+        :data="sheetEditData"
+        :titles="['原始数据', '待展示数据']"
+        :button-texts="['左选', '右选']"
+        :format="{
+          noChecked: '${total}',
+          hasChecked: '${checked}/${total}'
+        }"
+      />
       <span slot="footer" class="dialog-footer">
         <el-button @click="sheetEditVisible = false;sheetSelect = ''">取 消</el-button>
         <el-button type="primary" @click="sheetEditModelSave">确 定</el-button>
@@ -214,7 +235,9 @@ export default {
       columnChartSource: [],
       columnChartSeries: [],
       // 监听图表变化开关
-      chartChange: false
+      chartChange: false,
+      // 图表内工具栏翻转
+      changeChartDirection: false
 
     }
   },
@@ -275,10 +298,9 @@ export default {
       // this.chartData = result.data['dataTable'].map(item => Object.assign({}, item, {id: index++}))
       this.timeSelect = ''
       this.isOk = true
-
-      //TODO
+      console.log(this.checkedChart[0])
       if (this.checkedChart[0] !== '') {
-        this.chartReback()
+        this.chartReback(this.checkedChart[0])
       }
     },
     barChartFunc() {
@@ -294,6 +316,9 @@ export default {
         this.barChartSeries.push({ type: 'bar' })
       }
       this.chartOption = {
+        grid: {
+          right: '50px'
+        },
         legend: {},
         tooltip: {},
         dataset: {
@@ -452,6 +477,6 @@ export default {
 
 <style scoped>
 /deep/ .el-transfer-panel {
-  width: 350px !important;
+  width: 300px !important;
 }
 </style>
