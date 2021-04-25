@@ -14,23 +14,11 @@
       <el-col :span="6">
         <el-checkbox-group v-model="checkedChart" :max="1">
           <el-checkbox-button v-for="item in checkboxLabel" :key="item.value" :label="item.value">{{
-              item.label
-            }}
+            item.label
+          }}
           </el-checkbox-button>
         </el-checkbox-group>
       </el-col>
-      <!--      <el-col :span="1">条形图</el-col>-->
-      <!--      <el-col :span="1">-->
-      <!--        <el-switch v-model="barChartStatus" />-->
-      <!--      </el-col>-->
-      <!--      <el-col :span="1">柱状图</el-col>-->
-      <!--      <el-col :span="1">-->
-      <!--        <el-switch v-model="columnChartStatus" />-->
-      <!--      </el-col>-->
-      <!--      <el-col :span="1">饼图</el-col>-->
-      <!--      <el-col :span="1">-->
-      <!--        <el-switch v-model="pieChartStatus" />-->
-      <!--      </el-col>-->
       <el-col :span="2">
         <el-cascader
           v-model="tableSelect"
@@ -53,15 +41,45 @@
         <el-button type="primary" round icon="el-icon-search" @click="initData">搜索</el-button>
       </el-col>
     </el-row>
-    <el-row>
+    <el-row v-show="showChart" style="margin-top: 20px">
       <el-col :span="20">
-        <div v-show="showChart" id="chart" ref="chart" style="width: 100%;height: 600px"/>
+        <div id="chart" ref="chart" style="width: 100%;height: 600px" />
       </el-col>
-      <el-col :span="4"/>
+      <el-col :span="4">
+        <el-row>
+          <el-col :span="12">
+            <el-switch
+              active-text="行展示"
+              inactive-text="列展示"
+            />
+          </el-col>
+          <el-col :span="12">
+            <el-button @click="chartReback(checkedChart[0])">还原</el-button>
+          </el-col>
+        </el-row>
+        <el-divider />
+        <p>横坐标标签</p>
+        <el-tag
+          v-for="item in yLabelList"
+          :type="findGCTag(item)?'success':'info'"
+          closable
+          @close="closeTag(item,'y')"
+        >{{ item }}
+        </el-tag>
+        <el-divider />
+        <p>纵坐标标签</p>
+        <el-tag
+          v-for="item in Object.values(xLabelMap)"
+          :type="findGCTag(item)?'success':'info'"
+          closable
+          @close="closeTag(item,'x')"
+        >{{ item }}
+        </el-tag>
+      </el-col>
     </el-row>
     <el-table v-if="isOk" :data="chartData">
       <!--      <el-table-column type="selection" align="center"></el-table-column>-->
-      <el-table-column prop="e_yAxis" label="年份" align="center" width="70"/>
+      <el-table-column prop="e_yAxis" label="年份" align="center" sortable />
       <el-table-column
         v-for="item in new Array(7).keys()"
         :key="item"
@@ -80,7 +98,7 @@
     >
       <el-radio v-model="sheetEditRC" label="xAxis">行</el-radio>
       <el-radio v-model="sheetEditRC" label="yAxis">列</el-radio>
-      <el-transfer v-model="sheetEditModel" :data="sheetEditData"/>
+      <el-transfer v-model="sheetEditModel" :data="sheetEditData" />
       <span slot="footer" class="dialog-footer">
         <el-button @click="sheetEditVisible = false;sheetSelect = ''">取 消</el-button>
         <el-button type="primary" @click="sheetEditModelSave">确 定</el-button>
@@ -99,9 +117,14 @@ export default {
   name: 'Index',
   data() {
     return {
+      // 延时渲染表格
       isOk: false,
+      // y轴数据集
       chartData: [],
+      // x轴数据集
       xLabelMap: {},
+      // y轴标签列表
+      yLabelList: [],
       timeOptions: [
         {
           value: '5',
@@ -167,19 +190,28 @@ export default {
         }
       ],
       checkedChart: [],
+      // 数据管理选择值
       tableSelect: '',
+      // 报表管理选择值
       sheetSelect: '',
+      // 时间跨度选择值
       timeSelect: '',
+      // 显示图表
       showChart: true,
-      // barChartStatus: false,
-      // columnChartStatus: false,
-      // pieChartStatus: false,
+      // 图表option
       chartOption: {},
       chart: undefined,
       sheetEditVisible: false,
       sheetEditData: [],
       sheetEditModel: [],
-      sheetEditRC: 'xAxis'
+      sheetEditRC: 'xAxis',
+      // 标签回收列表
+      labelGC: [],
+      barChartSource: [],
+      barChartSeries: [],
+      barChartGC: {},
+      // 监听图表变化开关
+      chartChange: false
 
     }
   },
@@ -200,10 +232,17 @@ export default {
           break
         default :
           this.showChart = false
+          this.chartOption = []
       }
     },
     sheetEditRC(val) {
       this.sheetEditInitData(val)
+    },
+    chartChange(val) {
+      if (val) {
+        this.chart.setOption(this.chartOption)
+        this.chartChange = false
+      }
     }
   },
   mounted() {
@@ -224,31 +263,35 @@ export default {
         this.xLabelMap[item.pointer] = item.cname
       })
       this.chartData = result.data['dataTable']
+      this.chartData.map(item => item['e_yAxis']).forEach(item => {
+        this.yLabelList.push(item)
+      })
       // let index = 0
       // this.chartData = result.data['dataTable'].map(item => Object.assign({}, item, {id: index++}))
       this.timeSelect = ''
       this.isOk = true
     },
     barChartFunc() {
+      this.barChartSource = []
+      this.barChartSeries = []
+
       const newDataSource = this.chartData.map(item => _.omit(item, ['c_yAxis']))
-      const source = []
-      const series = []
-      source.push(['product'].concat(Object.values(this.xLabelMap).splice(0)))
+      this.barChartSource.push(['product'].concat(Object.values(this.xLabelMap).splice(0)))
       newDataSource.forEach(item => {
-        source.push(Object.values(item))
+        this.barChartSource.push(Object.values(item))
       })
       for (let i = 0; i < Object.values(this.xLabelMap).length; i++) {
-        series.push({ type: 'bar' })
+        this.barChartSeries.push({ type: 'bar' })
       }
       this.chartOption = {
         legend: {},
         tooltip: {},
         dataset: {
-          source: source
+          source: this.barChartSource
         },
         xAxis: { type: 'category' },
         yAxis: {},
-        series: series
+        series: this.barChartSeries
       }
       this.chart.clear()
       this.chart.setOption(this.chartOption)
@@ -267,7 +310,6 @@ export default {
       for (let i = 0; i < Object.values(this.xLabelMap).length; i++) {
         series.push({ type: 'bar' })
       }
-
       this.chartOption = {
         legend: {},
         tooltip: {},
@@ -323,6 +365,46 @@ export default {
         this.chartData.map(item => item['e_yAxis']).forEach(item => {
           this.sheetEditData.push({ key: item, label: item })
         })
+      }
+    },
+    // 删除标签并从echart数据中删除
+    closeTag(item, axias) {
+      console.log(item)
+      this.labelGC.indexOf(item) === -1 ? this.labelGC.push(item) : this.labelGC.splice(this.labelGC.indexOf(item), 1)
+      if (axias === 'x') {
+        // console.log(this.barChartSource)
+      } else {
+        let needDeleteId
+        for (let i = 1; i < this.barChartSource.length; i++) {
+          if (this.barChartSource[i][0] === item) {
+            needDeleteId = i
+            break
+          }
+        }
+        if (needDeleteId !== undefined) {
+          this.barChartGC[this.barChartSource[needDeleteId][0]] = this.barChartSource[needDeleteId]
+          this.barChartSource.splice(needDeleteId, 1)
+        }
+        // }else {
+        //   for (let i = 1; i < this.barChartSource.length; i++) {
+        //
+        //   }
+        //   this.barChartGC[item]
+        // }
+        this.chartChange = true
+        console.log(this.barChartGC)
+      }
+    },
+    // 查找已经删除的标签
+    findGCTag(item) {
+      return this.labelGC.indexOf(item) === -1
+    },
+    chartReback(type){
+      this.labelGC = []
+      switch (type) {
+        case 'bar':
+          this.barChartFunc()
+          break
       }
     }
   }
