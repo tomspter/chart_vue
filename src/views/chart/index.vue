@@ -189,6 +189,7 @@ export default {
           label: '饼图'
         }
       ],
+      // 图表种类多选
       checkedChart: [],
       // 数据管理选择值
       tableSelect: '',
@@ -210,6 +211,8 @@ export default {
       barChartSource: [],
       barChartSeries: [],
       barChartGC: {},
+      columnChartSource: [],
+      columnChartSeries: [],
       // 监听图表变化开关
       chartChange: false
 
@@ -254,6 +257,8 @@ export default {
   },
   methods: {
     async initData() {
+      this.yLabelList = []
+      this.xLabelMap = {}
       const params = new URLSearchParams()
       params.append('tablename', 'income_engelcoefficient_info')
       params.append('count', this.timeSelect === '' ? 5 : this.timeSelect)
@@ -270,6 +275,11 @@ export default {
       // this.chartData = result.data['dataTable'].map(item => Object.assign({}, item, {id: index++}))
       this.timeSelect = ''
       this.isOk = true
+
+      //TODO
+      if (this.checkedChart[0] !== '') {
+        this.chartReback()
+      }
     },
     barChartFunc() {
       this.barChartSource = []
@@ -300,27 +310,27 @@ export default {
 
     },
     columnChartFunc() {
+      this.columnChartSource = []
+      this.columnChartSeries = []
+
       const newDataSource = this.chartData.map(item => _.omit(item, ['c_yAxis']))
-      const source = []
-      const series = []
-      source.push(['product'].concat(Object.values(this.xLabelMap).splice(0)))
+      this.columnChartSource.push(['product'].concat(Object.values(this.xLabelMap).splice(0)))
       newDataSource.forEach(item => {
-        source.push(Object.values(item))
+        this.columnChartSource.push(Object.values(item))
       })
       for (let i = 0; i < Object.values(this.xLabelMap).length; i++) {
-        series.push({ type: 'bar' })
+        this.columnChartSeries.push({ type: 'bar' })
       }
       this.chartOption = {
         legend: {},
         tooltip: {},
         dataset: {
-          source: source
+          source: this.columnChartSource
         },
         xAxis: {},
         yAxis: { type: 'category' },
-        series: series
+        series: this.columnChartSeries
       }
-      console.log(this.chartOption)
       this.chart.clear()
       this.chart.setOption(this.chartOption)
     },
@@ -374,36 +384,65 @@ export default {
       if (axias === 'x') {
         // console.log(this.barChartSource)
       } else {
-        let needDeleteId
-        for (let i = 1; i < this.barChartSource.length; i++) {
-          if (this.barChartSource[i][0] === item) {
-            needDeleteId = i
-            break
-          }
-        }
-        if (needDeleteId !== undefined) {
-          this.barChartGC[this.barChartSource[needDeleteId][0]] = this.barChartSource[needDeleteId]
-          this.barChartSource.splice(needDeleteId, 1)
-        }
-        // }else {
-        //   for (let i = 1; i < this.barChartSource.length; i++) {
-        //
-        //   }
-        //   this.barChartGC[item]
-        // }
-        this.chartChange = true
-        console.log(this.barChartGC)
+        this.closeTagInnerFunc(item)
       }
     },
     // 查找已经删除的标签
     findGCTag(item) {
       return this.labelGC.indexOf(item) === -1
     },
-    chartReback(type){
+    // chart图还原右侧按钮
+    chartReback(type) {
       this.labelGC = []
       switch (type) {
         case 'bar':
           this.barChartFunc()
+          break
+        case 'column':
+          this.columnChartFunc()
+          break
+      }
+    },
+    closeTagInnerFunc(item) {
+      let needDeleteId
+      switch (this.checkedChart[0]) {
+        case 'bar':
+          for (let i = 1; i < this.barChartSource.length; i++) {
+            if (this.barChartSource[i][0] === item) {
+              needDeleteId = i
+              break
+            }
+          }
+          if (needDeleteId !== undefined) {
+            this.barChartGC[this.barChartSource[needDeleteId][0]] = this.barChartSource[needDeleteId]
+            this.barChartSource.splice(needDeleteId, 1)
+          }
+          // }else {
+          //   for (let i = 1; i < this.barChartSource.length; i++) {
+          //
+          //   }
+          //   this.barChartGC[item]
+          // }
+          this.chartChange = true
+          break
+        case 'column':
+          for (let i = 1; i < this.columnChartSource.length; i++) {
+            if (this.columnChartSource[i][0] === item) {
+              needDeleteId = i
+              break
+            }
+          }
+          if (needDeleteId !== undefined) {
+            // this.barChartGC[this.columnChartSource[needDeleteId][0]] = this.columnChartSource[needDeleteId]
+            this.columnChartSource.splice(needDeleteId, 1)
+          }
+          // }else {
+          //   for (let i = 1; i < this.barChartSource.length; i++) {
+          //
+          //   }
+          //   this.barChartGC[item]
+          // }
+          this.chartChange = true
           break
       }
     }
