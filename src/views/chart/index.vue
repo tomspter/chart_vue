@@ -7,25 +7,37 @@
             v-for="item in timeOptions"
             :key="item.value"
             :label="item.label"
-            :value="item.value">
-          </el-option>
+            :value="item.value"
+          />
         </el-select>
       </el-col>
-      <el-col :span="1">条形图</el-col>
-      <el-col :span="1">
-        <el-switch v-model="barChartStatus"></el-switch>
+      <el-col :span="6">
+        <el-checkbox-group v-model="checkedChart" :max="1">
+          <el-checkbox-button v-for="item in checkboxLabel" :key="item.value" :label="item.value">{{
+              item.label
+            }}
+          </el-checkbox-button>
+        </el-checkbox-group>
       </el-col>
-      <el-col :span="1">柱状图</el-col>
-      <el-col :span="1">
-        <el-switch v-model="columnChartStatus"></el-switch>
-      </el-col>
-      <el-col :span="1">饼图</el-col>
-      <el-col :span="1">
-        <el-switch v-model="pieChartStatus"></el-switch>
-      </el-col>
+      <!--      <el-col :span="1">条形图</el-col>-->
+      <!--      <el-col :span="1">-->
+      <!--        <el-switch v-model="barChartStatus" />-->
+      <!--      </el-col>-->
+      <!--      <el-col :span="1">柱状图</el-col>-->
+      <!--      <el-col :span="1">-->
+      <!--        <el-switch v-model="columnChartStatus" />-->
+      <!--      </el-col>-->
+      <!--      <el-col :span="1">饼图</el-col>-->
+      <!--      <el-col :span="1">-->
+      <!--        <el-switch v-model="pieChartStatus" />-->
+      <!--      </el-col>-->
       <el-col :span="2">
-        <el-cascader v-model="tableSelect" placeholder="数据管理" @change="tableChange"
-                     :options="tableOption"></el-cascader>
+        <el-cascader
+          v-model="tableSelect"
+          placeholder="数据管理"
+          :options="tableOption"
+          @change="tableChange"
+        />
       </el-col>
       <el-col :span="2">
         <el-select v-model="sheetSelect" placeholder="报表管理" @change="sheetChange">
@@ -33,26 +45,42 @@
             v-for="item in sheetOption"
             :key="item.value"
             :label="item.label"
-            :value="item.value">
-          </el-option>
+            :value="item.value"
+          />
         </el-select>
       </el-col>
       <el-col :span="2">
         <el-button type="primary" round icon="el-icon-search" @click="initData">搜索</el-button>
       </el-col>
     </el-row>
-    <div v-show="showChart" id="chart" ref="chart" style="width: 100%;height: 600px"></div>
+    <el-row>
+      <el-col :span="20">
+        <div v-show="showChart" id="chart" ref="chart" style="width: 100%;height: 600px"/>
+      </el-col>
+      <el-col :span="4"/>
+    </el-row>
     <el-table v-if="isOk" :data="chartData">
       <!--      <el-table-column type="selection" align="center"></el-table-column>-->
-      <el-table-column prop="e_yAxis" label="年份" align="center" width="70"></el-table-column>
-      <el-table-column v-for="item in new Array(7).keys()" :key="item" :prop="`xLabel${item}`"
-                       :label="Object.values(xLabelMap)[parseInt(item)]" align="center"></el-table-column>
+      <el-table-column prop="e_yAxis" label="年份" align="center" width="70"/>
+      <el-table-column
+        v-for="item in new Array(7).keys()"
+        :key="item"
+        :prop="`xLabel${item}`"
+        :label="Object.values(xLabelMap)[parseInt(item)]"
+        align="center"
+        sortable
+      />
     </el-table>
-    <el-dialog title="编辑" :visible.sync="sheetEditVisible" :before-close="beforeDialogClose" width="40%"
-               destroy-on-close>
+    <el-dialog
+      title="编辑"
+      :visible.sync="sheetEditVisible"
+      :before-close="beforeDialogClose"
+      width="40%"
+      destroy-on-close
+    >
       <el-radio v-model="sheetEditRC" label="xAxis">行</el-radio>
       <el-radio v-model="sheetEditRC" label="yAxis">列</el-radio>
-      <el-transfer v-model="sheetEditModel" :data="sheetEditData"></el-transfer>
+      <el-transfer v-model="sheetEditModel" :data="sheetEditData"/>
       <span slot="footer" class="dialog-footer">
         <el-button @click="sheetEditVisible = false;sheetSelect = ''">取 消</el-button>
         <el-button type="primary" @click="sheetEditModelSave">确 定</el-button>
@@ -62,7 +90,7 @@
 </template>
 
 <script>
-import {getData} from '@/api/chart'
+import { getData } from '@/api/chart'
 import * as echarts from 'echarts'
 
 const _ = require('lodash')
@@ -74,16 +102,17 @@ export default {
       isOk: false,
       chartData: [],
       xLabelMap: {},
-      timeOptions: [{
-        value: '5',
-        label: '5年时间'
-      }, {
-        value: '10',
-        label: '10年时间'
-      }, {
-        value: '20',
-        label: '20年时间'
-      }],
+      timeOptions: [
+        {
+          value: '5',
+          label: '5年时间'
+        }, {
+          value: '10',
+          label: '10年时间'
+        }, {
+          value: '20',
+          label: '20年时间'
+        }],
       sheetOption: [
         {
           value: '1',
@@ -93,7 +122,7 @@ export default {
           label: '转置'
         }, {
           value: '3',
-          label: '维度转换',
+          label: '维度转换'
         }
       ],
       tableOption: [
@@ -119,49 +148,58 @@ export default {
             }, {
               value: 'min',
               label: 'MIN最小值'
-            },
+            }
           ]
         }
       ],
+      checkboxLabel: [
+        {
+          value: 'bar',
+          label: '条形图'
+        },
+        {
+          value: 'column',
+          label: '柱状图'
+        },
+        {
+          value: 'pie',
+          label: '饼图'
+        }
+      ],
+      checkedChart: [],
       tableSelect: '',
       sheetSelect: '',
       timeSelect: '',
       showChart: true,
-      barChartStatus: false,
-      columnChartStatus: false,
-      pieChartStatus: false,
+      // barChartStatus: false,
+      // columnChartStatus: false,
+      // pieChartStatus: false,
       chartOption: {},
       chart: undefined,
       sheetEditVisible: false,
       sheetEditData: [],
       sheetEditModel: [],
-      sheetEditRC: 'xAxis',
+      sheetEditRC: 'xAxis'
 
     }
   },
   watch: {
-    barChartStatus(val) {
-      if (val) {
-        this.showChart = true
-        this.barChartFunc()
-      } else {
-        this.showChart = false
-      }
-    },
-    pieChartStatus(val) {
-      if (val) {
-        this.showChart = true
-        this.pieChartFunc()
-      } else {
-        this.showChart = false
-      }
-    },
-    columnChartStatus(val) {
-      if (val) {
-        this.showChart = true
-        this.columnChartFunc()
-      } else {
-        this.showChart = false
+    checkedChart(val) {
+      switch (val[0]) {
+        case 'bar':
+          this.showChart = true
+          this.barChartFunc()
+          break
+        case 'column':
+          this.showChart = true
+          this.columnChartFunc()
+          break
+        case 'pie':
+          this.showChart = true
+          this.pieChartFunc()
+          break
+        default :
+          this.showChart = false
       }
     },
     sheetEditRC(val) {
@@ -200,7 +238,7 @@ export default {
         source.push(Object.values(item))
       })
       for (let i = 0; i < Object.values(this.xLabelMap).length; i++) {
-        series.push({type: 'bar'})
+        series.push({ type: 'bar' })
       }
       this.chartOption = {
         legend: {},
@@ -208,7 +246,7 @@ export default {
         dataset: {
           source: source
         },
-        xAxis: {type: 'category'},
+        xAxis: { type: 'category' },
         yAxis: {},
         series: series
       }
@@ -227,7 +265,7 @@ export default {
         source.push(Object.values(item))
       })
       for (let i = 0; i < Object.values(this.xLabelMap).length; i++) {
-        series.push({type: 'bar'})
+        series.push({ type: 'bar' })
       }
 
       this.chartOption = {
@@ -237,7 +275,7 @@ export default {
           source: source
         },
         xAxis: {},
-        yAxis: {type: 'category'},
+        yAxis: { type: 'category' },
         series: series
       }
       console.log(this.chartOption)
@@ -253,7 +291,7 @@ export default {
       else if (val === '2') {
         return
       }
-      //维度转换
+      // 维度转换
       else if (val === '3') {
         return
       }
@@ -277,13 +315,13 @@ export default {
       // 将横坐标填充到sheetEditData中
       if (type === 'xAxis') {
         Object.values(this.xLabelMap).forEach(item => {
-          this.sheetEditData.push({key: item, label: item})
+          this.sheetEditData.push({ key: item, label: item })
         })
       }
       // 纵坐标填充
       else {
         this.chartData.map(item => item['e_yAxis']).forEach(item => {
-          this.sheetEditData.push({key: item, label: item})
+          this.sheetEditData.push({ key: item, label: item })
         })
       }
     }
