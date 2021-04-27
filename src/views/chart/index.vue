@@ -31,14 +31,25 @@
       </el-col>
       <el-col :span="1" />
       <el-col :span="2">
-        <el-select v-model="sheetSelect" placeholder="报表管理" @change="sheetChange">
-          <el-option
-            v-for="item in sheetOption"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
-          />
-        </el-select>
+        <!--        <el-select v-model="sheetSelect" placeholder="报表管理" @change="sheetChange">-->
+        <!--          <el-option-->
+        <!--            v-for="item in sheetOption"-->
+        <!--            :key="item.value"-->
+        <!--            :label="item.label"-->
+        <!--            :value="item.value"-->
+        <!--          />-->
+        <!--        </el-select>-->
+        <el-dropdown @command="sheetChange">
+          <span class="el-dropdown-link">
+            报表管理<i class="el-icon-arrow-down el-icon--right" />
+          </span>
+          <el-dropdown-menu slot="dropdown">
+            <el-dropdown-item command="1">编辑</el-dropdown-item>
+            <el-dropdown-item command="2">转置</el-dropdown-item>
+            <el-dropdown-item command="3">维度转换</el-dropdown-item>
+          </el-dropdown-menu>
+        </el-dropdown>
+
       </el-col>
       <el-col :span="3" />
       <el-col :span="2">
@@ -88,7 +99,8 @@
     </el-row>
     <!--    表格-->
     <el-table v-if="isOk" :data="chartData" style="margin-top: 20px" stripe border>
-      <el-table-column prop="e_yAxis" label="年份" align="center" sortable />
+      <el-table-column v-if="!hlzj" prop="e_yAxis" label="年份" align="center" sortable />
+      <el-table-column v-else prop="c_yAxis" label="指标" align="center" sortable />
       <el-table-column
         v-for="item in new Array(Object.values(xLabelMap).length).keys()"
         :key="item"
@@ -122,6 +134,24 @@
       />
       <span slot="footer" class="dialog-footer">
         <el-button @click="sheetEditVisible = false;sheetSelect = ''">取 消</el-button>
+        <el-button type="primary" @click="sheetEditModelSave">确 定</el-button>
+      </span>
+    </el-dialog>
+    <!--    筛选页面-->
+    <el-dialog title="筛选" :visible.sync="filterVisible" width="50" destroy-on-close>
+      <div style="margin-bottom: 20px">
+        <el-radio v-model="sheetEditRC" label="xAxis">行</el-radio>
+        <el-radio v-model="sheetEditRC" label="yAxis">列</el-radio>
+      </div>
+      <el-card>
+        <el-checkbox-group
+          v-model="filterFirstSelect"
+          :min="1"
+          :max="2"
+        />
+      </el-card>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="filterVisible = false;tableSelect = ''">取 消</el-button>
         <el-button type="primary" @click="sheetEditModelSave">确 定</el-button>
       </span>
     </el-dialog>
@@ -237,8 +267,14 @@ export default {
       // 监听图表变化开关
       chartChange: false,
       // 图表内工具栏翻转
-      changeChartDirection: false
-
+      changeChartDirection: false,
+      // 筛选页面
+      filterVisible: false,
+      // 转置标记
+      hlzj: true,
+      filterFirstSelect: '',
+      filterSecondSelect: '',
+      filterSelectNum:'',
     }
   },
   watch: {
@@ -285,6 +321,9 @@ export default {
       const params = new URLSearchParams()
       params.append('tablename', 'income_engelcoefficient_info')
       params.append('count', this.timeSelect === '' ? 5 : this.timeSelect)
+      params.append('hlzh', Number(this.hlzj))
+      params.append('search_list', '')
+      params.append('type', 'row')
       const result = await getData(params)
       console.log(result.data)
       result.data['xLabelList'].forEach(item => {
@@ -298,7 +337,6 @@ export default {
       // this.chartData = result.data['dataTable'].map(item => Object.assign({}, item, {id: index++}))
       this.timeSelect = ''
       this.isOk = true
-      console.log(this.checkedChart[0])
       if (this.checkedChart[0] !== '') {
         this.chartReback(this.checkedChart[0])
       }
@@ -359,22 +397,31 @@ export default {
       this.chart.clear()
       this.chart.setOption(this.chartOption)
     },
-    sheetChange(val) {
+    async sheetChange(val) {
       // 编辑
       if (val === '1') {
         this.sheetEditInitData('xAxis')
       }
       // 转置
       else if (val === '2') {
-        return
+        this.hlzj = !this.hlzj
+        await this.initData()
       }
       // 维度转换
       else if (val === '3') {
-        return
+
       }
     },
     tableChange(val) {
-      console.log(val)
+      switch (val[0]) {
+        case '1':
+          break
+        case '2':
+          this.filterVisible = true
+          break
+        case '3':
+          break
+      }
     },
     beforeDialogClose(done) {
       this.sheetSelect = ''
@@ -383,7 +430,6 @@ export default {
     sheetEditModelSave() {
       this.sheetSelect = ''
       this.sheetEditVisible = false
-      console.log(this.sheetEditModel)
     },
     sheetEditInitData(type) {
       this.sheetEditVisible = true
@@ -404,7 +450,6 @@ export default {
     },
     // 删除标签并从echart数据中删除
     closeTag(item, axias) {
-      console.log(item)
       this.labelGC.indexOf(item) === -1 ? this.labelGC.push(item) : this.labelGC.splice(this.labelGC.indexOf(item), 1)
       if (axias === 'x') {
         // console.log(this.barChartSource)
