@@ -30,7 +30,7 @@
             <template v-for="item in tableOption">
               <el-dropdown-item v-if="!item.children" :command="item.value">{{ item.label }}</el-dropdown-item>
               <el-dropdown-item v-else>
-                <el-dropdown placement="right-start">
+                <el-dropdown placement="right-start" @command="tableChange">
                   <span class="el-dropdown-link">
                     {{ item.label }}<i class="el-icon-arrow-down el-icon--right" />
                   </span>
@@ -103,9 +103,12 @@
         </el-tag>
       </el-col>
     </el-row>
+
+
+
     <!--    表格-->
     <el-table v-if="isOk" :data="chartData" style="margin-top: 20px" stripe border>
-      <el-table-column v-if="hlzj" prop="e_yAxis" label="年份" align="center" sortable />
+      <el-table-column v-if="hlzj" prop="c_yAxis" label="年份" align="center" sortable />
       <el-table-column v-else prop="c_yAxis" label="指标" align="center" sortable />
       <el-table-column
         v-for="item in new Array(Object.values(xLabelMap).length).keys()"
@@ -116,6 +119,9 @@
         sortable
       />
     </el-table>
+
+
+
     <!--    图表编辑弹窗-->
     <el-dialog
       title="行列编辑"
@@ -143,6 +149,7 @@
         <el-button type="primary" @click="sheetEditModelSave">确 定</el-button>
       </span>
     </el-dialog>
+
     <!--    筛选页面-->
     <el-dialog title="筛选" :visible.sync="filterVisible" width="60%" destroy-on-close :before-close="beforeDialogClose">
       <div style="margin-bottom: 20px">
@@ -293,11 +300,11 @@ export default {
         },
         {
           value: 'le',
-          label: '小于等于(>=)'
+          label: '小于等于(<=)'
         },
         {
           value: 'ge',
-          label: '大于等于(<=)'
+          label: '大于等于(>=)'
         }
       ],
       // 图表种类多选
@@ -338,7 +345,9 @@ export default {
       filterSelectNum: 0,
       filterCanClick: false,
       filterResultTags: [],
-      filterResultJson: []
+      filterResultJson: [],
+      type: 'row',
+      func: ''
     }
   },
   computed: {
@@ -406,8 +415,9 @@ export default {
       params.append('tablename', 'income_engelcoefficient_info')
       params.append('count', this.timeSelect === '' ? 5 : this.timeSelect)
       params.append('hlzh', Number(this.hlzj))
-      params.append('search_list', '')
-      params.append('type', 'row')
+      params.append('search_list', JSON.stringify(this.filterResultJson))
+      params.append('type', this.type)
+      params.append('func', this.func)
       const result = await getData(params)
       console.log(result.data)
       this.xLableList = result.data['xLabelList']
@@ -425,6 +435,7 @@ export default {
       if (this.checkedChart[0] !== '') {
         this.chartReback(this.checkedChart[0])
       }
+      this.func = ''
     },
     barChartFunc() {
       this.barChartSource = []
@@ -498,14 +509,15 @@ export default {
       }
     },
     tableChange(val) {
-      switch (val[0]) {
+      switch (val) {
         case '1':
           break
         case '2':
           this.filterEditInitData('xAxis')
           this.filterVisible = true
           break
-        case '3':
+        default:
+          this.tableCalcFunc(val)
           break
       }
     },
@@ -552,7 +564,7 @@ export default {
       }
       // 纵坐标填充
       else {
-        this.chartData.map(item => item['c_yAxis']).forEach(item => {
+        this.chartData.map(item => item['e_yAxis']).forEach(item => {
           this.sheetEditData.push({ key: item, label: item })
         })
       }
@@ -630,8 +642,17 @@ export default {
       const tagName = this.filterFirstSelect + ' ' + this.filterSecondSelect + ' ' + this.filterSelectNum
 
       const jsonValue = this.filterSelectNum
-      const jsonKey = this.xLableList.filter(item => item.cname === this.filterFirstSelect)[0].ename
-      const jsonSymbol = this.filterOption.filter(item => item.label === this.filterSecondSelect)[0].value
+      let jsonKey
+      let jsonSymbol
+      if (this.filterEditRC === 'xAxis') {
+        this.type = 'row'
+        jsonKey = this.xLableList.filter(item => item.cname === this.filterFirstSelect)[0].ename
+        jsonSymbol = this.filterOption.filter(item => item.label === this.filterSecondSelect)[0].value
+      } else {
+        this.type = 'column'
+        jsonKey = this.yLabelList.filter(item => item === this.filterFirstSelect)[0]
+        jsonSymbol = this.filterOption.filter(item => item.label === this.filterSecondSelect)[0].value
+      }
       // 添加到发送结果
       let isExistJsonKey = false
       for (const filterResultJsonElement of this.filterResultJson) {
@@ -664,17 +685,16 @@ export default {
       console.log(JSON.stringify(this.filterResultJson))
     },
     async filterSave() {
-      const params = new URLSearchParams()
-      params.append('tablename', 'income_engelcoefficient_info')
-      params.append('count', this.timeSelect === '' ? 5 : this.timeSelect)
-      params.append('hlzh', Number(this.hlzj))
-      params.append('search_list', JSON.stringify(this.filterResultJson))
-      params.append('type', 'row')
-      const result = await getData(params)
-      console.log(result.data)
+      await this.initData()
+      this.filterVisible = false
+    },
+    async tableCalcFunc(func) {
+      this.func = func
+      await this.initData()
     }
   }
 }
+
 </script>
 
 <style scoped>
