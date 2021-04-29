@@ -2,7 +2,7 @@
   <div>
     <!--    搜索区域-->
     <el-row type="flex" align="middle" style="margin-top: 20px">
-      <el-col :span="1"/>
+      <el-col :span="1" />
       <el-col :span="4">
         <el-select v-model="timeSelect" placeholder="时间跨度选择">
           <el-option
@@ -22,26 +22,33 @@
         </el-checkbox-group>
       </el-col>
       <el-col :span="2">
-        <el-cascader
-          v-model="tableSelect"
-          placeholder="数据管理"
-          :options="tableOption"
-          @change="tableChange"
-        />
+        <el-dropdown @command="tableChange">
+          <span class="el-dropdown-link">
+            数据管理<i class="el-icon-arrow-down el-icon--right" />
+          </span>
+          <el-dropdown-menu slot="dropdown">
+            <template v-for="item in tableOption">
+              <el-dropdown-item v-if="!item.children" :command="item.value">{{ item.label }}</el-dropdown-item>
+              <el-dropdown-item v-else>
+                <el-dropdown placement="right-start">
+                  <span class="el-dropdown-link">
+                    {{ item.label }}<i class="el-icon-arrow-down el-icon--right" />
+                  </span>
+                  <el-dropdown-menu slot="dropdown">
+                    <template v-for="items in item.children">
+                      <el-dropdown-item :command="items.value">{{ items.label }}</el-dropdown-item>
+                    </template>
+                  </el-dropdown-menu>
+                </el-dropdown>
+              </el-dropdown-item>
+            </template>
+          </el-dropdown-menu>
+        </el-dropdown>
       </el-col>
-      <el-col :span="1"/>
       <el-col :span="2">
-        <!--        <el-select v-model="sheetSelect" placeholder="报表管理" @change="sheetChange">-->
-        <!--          <el-option-->
-        <!--            v-for="item in sheetOption"-->
-        <!--            :key="item.value"-->
-        <!--            :label="item.label"-->
-        <!--            :value="item.value"-->
-        <!--          />-->
-        <!--        </el-select>-->
         <el-dropdown @command="sheetChange">
           <span class="el-dropdown-link">
-            报表管理<i class="el-icon-arrow-down el-icon--right"/>
+            报表管理<i class="el-icon-arrow-down el-icon--right" />
           </span>
           <el-dropdown-menu slot="dropdown">
             <el-dropdown-item command="1">编辑</el-dropdown-item>
@@ -49,9 +56,8 @@
             <el-dropdown-item command="3">维度转换</el-dropdown-item>
           </el-dropdown-menu>
         </el-dropdown>
-
       </el-col>
-      <el-col :span="3"/>
+      <el-col :span="4" />
       <el-col :span="2">
         <el-button type="primary" round icon="el-icon-search" @click="initData">搜索</el-button>
       </el-col>
@@ -59,7 +65,7 @@
     <!--    图表层-->
     <el-row v-show="showChart" style="margin-top: 20px">
       <el-col :span="20">
-        <div id="chart" ref="chart" style="width: 100%;height: 600px"/>
+        <div id="chart" ref="chart" style="width: 100%;height: 600px" />
       </el-col>
       <el-col :span="4">
         <!--        右侧功能栏-->
@@ -99,8 +105,8 @@
     </el-row>
     <!--    表格-->
     <el-table v-if="isOk" :data="chartData" style="margin-top: 20px" stripe border>
-      <el-table-column v-if="hlzj" prop="e_yAxis" label="年份" align="center" sortable/>
-      <el-table-column v-else prop="c_yAxis" label="指标" align="center" sortable/>
+      <el-table-column v-if="hlzj" prop="e_yAxis" label="年份" align="center" sortable />
+      <el-table-column v-else prop="c_yAxis" label="指标" align="center" sortable />
       <el-table-column
         v-for="item in new Array(Object.values(xLabelMap).length).keys()"
         :key="item"
@@ -138,7 +144,7 @@
       </span>
     </el-dialog>
     <!--    筛选页面-->
-    <el-dialog title="筛选" :visible.sync="filterVisible" width="60%" destroy-on-close>
+    <el-dialog title="筛选" :visible.sync="filterVisible" width="60%" destroy-on-close :before-close="beforeDialogClose">
       <div style="margin-bottom: 20px">
         <el-radio v-model="filterEditRC" label="xAxis">行</el-radio>
         <el-radio v-model="filterEditRC" label="yAxis">列</el-radio>
@@ -163,14 +169,19 @@
               </el-row>
             </el-radio-group>
           </el-card>
-          <el-input-number v-model="filterSelectNum" size="medium" style="margin-top: 30px;margin-left: 20px"/>
+          <el-input-number v-model="filterSelectNum" size="medium" style="margin-top: 30px;margin-left: 20px" />
         </el-col>
-<!--        选择按钮-->
+        <!--        选择按钮-->
         <el-col :span="2">
-          <el-button style="margin-top: 60%;margin-left: 15px" round :type="filterCanClick?'success':'danger'"
-                     icon="el-icon-plus" @click="filterAddResult"></el-button>
+          <el-button
+            style="margin-top: 60%;margin-left: 15px"
+            round
+            :type="filterCanClick?'success':'danger'"
+            icon="el-icon-plus"
+            @click="filterAddResult"
+          />
         </el-col>
-<!--        选择结果-->
+        <!--        选择结果-->
         <el-col :span="8">
           <el-card>
             <el-row v-for="item in filterResultTags" :key="item">
@@ -181,14 +192,14 @@
       </el-row>
       <span slot="footer" class="dialog-footer">
         <el-button @click="filterVisible = false;">取 消</el-button>
-        <el-button type="primary" @click="sheetEditModelSave">确 定</el-button>
+        <el-button type="primary" @click="filterSave">确 定</el-button>
       </span>
     </el-dialog>
   </div>
 </template>
 
 <script>
-import {getData} from '@/api/chart'
+import { getData } from '@/api/chart'
 import * as echarts from 'echarts'
 
 const _ = require('lodash')
@@ -326,14 +337,14 @@ export default {
       filterSecondSelect: '',
       filterSelectNum: 0,
       filterCanClick: false,
-      filterResultTags: ['label'],
-      filterResultJson: [],
+      filterResultTags: [],
+      filterResultJson: []
     }
   },
   computed: {
     listenFilterInput() {
-      const {filterFirstSelect, filterSecondSelect, filterSelectNum} = this
-      return {filterFirstSelect, filterSecondSelect, filterSelectNum}
+      const { filterFirstSelect, filterSecondSelect, filterSelectNum } = this
+      return { filterFirstSelect, filterSecondSelect, filterSelectNum }
     }
   },
   watch: {
@@ -425,7 +436,7 @@ export default {
         this.barChartSource.push(Object.values(item))
       })
       for (let i = 0; i < Object.values(this.xLabelMap).length; i++) {
-        this.barChartSeries.push({type: 'bar'})
+        this.barChartSeries.push({ type: 'bar' })
       }
       this.chartOption = {
         grid: {
@@ -436,7 +447,7 @@ export default {
         dataset: {
           source: this.barChartSource
         },
-        xAxis: {type: 'category'},
+        xAxis: { type: 'category' },
         yAxis: {},
         series: this.barChartSeries
       }
@@ -456,7 +467,7 @@ export default {
         this.columnChartSource.push(Object.values(item))
       })
       for (let i = 0; i < Object.values(this.xLabelMap).length; i++) {
-        this.columnChartSeries.push({type: 'bar'})
+        this.columnChartSeries.push({ type: 'bar' })
       }
       this.chartOption = {
         legend: {},
@@ -465,7 +476,7 @@ export default {
           source: this.columnChartSource
         },
         xAxis: {},
-        yAxis: {type: 'category'},
+        yAxis: { type: 'category' },
         series: this.columnChartSeries
       }
       this.chart.clear()
@@ -513,13 +524,13 @@ export default {
       // 将横坐标填充到sheetEditData中
       if (type === 'xAxis') {
         Object.values(this.xLabelMap).forEach(item => {
-          this.sheetEditData.push({key: item, label: item})
+          this.sheetEditData.push({ key: item, label: item })
         })
       }
       // 纵坐标填充
       else {
         this.chartData.map(item => item['e_yAxis']).forEach(item => {
-          this.sheetEditData.push({key: item, label: item})
+          this.sheetEditData.push({ key: item, label: item })
         })
       }
     },
@@ -527,16 +538,22 @@ export default {
       this.filterVisible = true
       this.sheetEditModel = []
       this.sheetEditData = []
+      this.filterFirstSelect = ''
+      this.filterSecondSelect = ''
+      this.filterSelectNum = 0
+      this.filterCanClick = false
+      this.filterResultTags = []
+      this.filterResultJson = []
       // 将横坐标填充到sheetEditData中
       if (type === 'xAxis') {
         Object.values(this.xLabelMap).forEach(item => {
-          this.sheetEditData.push({key: item, label: item})
+          this.sheetEditData.push({ key: item, label: item })
         })
       }
       // 纵坐标填充
       else {
-        this.chartData.map(item => item['e_yAxis']).forEach(item => {
-          this.sheetEditData.push({key: item, label: item})
+        this.chartData.map(item => item['c_yAxis']).forEach(item => {
+          this.sheetEditData.push({ key: item, label: item })
         })
       }
     },
@@ -611,24 +628,29 @@ export default {
     filterAddResult() {
       // 添加到显示数组
       const tagName = this.filterFirstSelect + ' ' + this.filterSecondSelect + ' ' + this.filterSelectNum
-      this.filterResultTags.push(tagName)
+
       const jsonValue = this.filterSelectNum
       const jsonKey = this.xLableList.filter(item => item.cname === this.filterFirstSelect)[0].ename
       const jsonSymbol = this.filterOption.filter(item => item.label === this.filterSecondSelect)[0].value
       // 添加到发送结果
       let isExistJsonKey = false
-      for (let filterResultJsonElement of this.filterResultJson) {
+      for (const filterResultJsonElement of this.filterResultJson) {
         if (Object.keys(filterResultJsonElement).includes(jsonKey)) {
           isExistJsonKey = true
-          filterResultJsonElement[jsonKey].push(
-            {
-              [jsonSymbol]: jsonValue
-            }
-          )
+          if (filterResultJsonElement[jsonKey].filter(item => item[jsonSymbol]).length !== 0) {
+            this.$message.warning('请勿重复添加')
+          } else {
+            this.filterResultTags.push(tagName)
+            filterResultJsonElement[jsonKey].push(
+              {
+                [jsonSymbol]: jsonValue
+              }
+            )
+          }
         }
       }
-      console.log(jsonKey,jsonSymbol)
       if (!isExistJsonKey) {
+        this.filterResultTags.push(tagName)
         this.filterResultJson.push(
           {
             [jsonKey]: [
@@ -640,6 +662,16 @@ export default {
         )
       }
       console.log(JSON.stringify(this.filterResultJson))
+    },
+    async filterSave() {
+      const params = new URLSearchParams()
+      params.append('tablename', 'income_engelcoefficient_info')
+      params.append('count', this.timeSelect === '' ? 5 : this.timeSelect)
+      params.append('hlzh', Number(this.hlzj))
+      params.append('search_list', JSON.stringify(this.filterResultJson))
+      params.append('type', 'row')
+      const result = await getData(params)
+      console.log(result.data)
     }
   }
 }
