@@ -4,14 +4,17 @@
     <el-row type="flex" align="middle" style="margin-top: 20px">
       <el-col :span="1" />
       <el-col :span="4">
-        <el-select v-model="timeSelect" placeholder="时间跨度选择">
-          <el-option
-            v-for="item in timeOptions"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
-          />
-        </el-select>
+        <el-dropdown @command="timeSelectFunc">
+          <span class="el-dropdown-link">
+            时间跨度选择<i class="el-icon-arrow-down el-icon--right" />
+          </span>
+          <el-dropdown-menu slot="dropdown">
+            <el-dropdown-item v-for="item in timeOptions" :key="item.value" :command="item.value">{{
+              item.label
+            }}
+            </el-dropdown-item>
+          </el-dropdown-menu>
+        </el-dropdown>
       </el-col>
       <el-col :span="1">图表查看</el-col>
       <el-col :span="6">
@@ -58,9 +61,12 @@
         </el-dropdown>
       </el-col>
       <el-col :span="4" />
-      <el-col :span="2">
+      <el-col :span="4">
         <el-button type="primary" round icon="el-icon-search" @click="initData">搜索</el-button>
       </el-col>
+      <!--      <el-col :span="2">-->
+      <!--        <el-button type="primary" round icon="el-icon-refresh-left" @click="reback">还原</el-button>-->
+      <!--      </el-col>-->
     </el-row>
     <!--    图表层-->
     <el-row v-show="showChart" style="margin-top: 20px">
@@ -83,28 +89,38 @@
             </el-button>
           </el-col>
         </el-row>
-        <el-divider>横坐标标签</el-divider>
-        <el-tag
-          v-for="item in yLabelList"
-          :type="findGCTag(item)?'success':'info'"
-          closable
-          style="margin-right: 10px;margin-bottom: 10px"
-          @close="closeTag(item,'y')"
-        >{{ item }}
-        </el-tag>
-        <el-divider>纵坐标标签</el-divider>
-        <el-tag
-          v-for="item in Object.values(xLabelMap)"
-          :type="findGCTag(item)?'success':'info'"
-          closable
-          style="margin-right: 50px;margin-bottom: 10px"
-          @close="closeTag(item,'x')"
-        >{{ item }}
-        </el-tag>
+        <div v-if="chartRightUtil">
+          <el-divider>横坐标标签</el-divider>
+          <el-tag
+            v-for="item in yLabelList"
+            :type="findGCTag(item)?'success':'info'"
+            closable
+            style="margin-right: 10px;margin-bottom: 10px"
+            @close="closeTag(item,'y')"
+          >{{ item }}
+          </el-tag>
+          <el-divider>纵坐标标签</el-divider>
+          <el-tag
+            v-for="item in Object.values(xLabelMap)"
+            :type="findGCTag(item)?'success':'info'"
+            closable
+            style="margin-right: 50px;margin-bottom: 10px"
+            @close="closeTag(item,'x')"
+          >{{ item }}
+          </el-tag>
+        </div>
+        <div v-else>
+          <el-divider>横坐标标签</el-divider>
+          <el-tag
+            v-for="item in yLabelList"
+            :type="item===pieSelect?'success':'info'"
+            style="margin-right: 10px;margin-bottom: 10px"
+            @click="pieTagClick(item)"
+          >{{ item }}
+          </el-tag>
+        </div>
       </el-col>
     </el-row>
-
-
 
     <!--    表格-->
     <el-table v-if="isOk" :data="chartData" style="margin-top: 20px" stripe border>
@@ -119,8 +135,6 @@
         sortable
       />
     </el-table>
-
-
 
     <!--    图表编辑弹窗-->
     <el-dialog
@@ -347,7 +361,9 @@ export default {
       filterResultTags: [],
       filterResultJson: [],
       type: 'row',
-      func: ''
+      func: '',
+      chartRightUtil: true,
+      pieSelect: ''
     }
   },
   computed: {
@@ -369,10 +385,13 @@ export default {
           break
         case 'pie':
           this.showChart = true
-          this.pieChartFunc()
+          this.chartRightUtil = false
+          this.pieSelect = this.yLabelList[0]
+          this.pieChartFunc(0)
           break
         default :
           this.showChart = false
+          this.chartRightUtil = true
           this.chartOption = []
       }
     },
@@ -465,14 +484,59 @@ export default {
       this.chart.clear()
       this.chart.setOption(this.chartOption)
     },
-    pieChartFunc() {
-
+    pieChartFunc(yIndex) {
+      const pieData = []
+      console.log(this.yLabelList, this.xLableList, this.chartData, this.xLabelMap)
+      const namesArray = Object.keys(this.chartData[yIndex]).slice(2)
+        .map(item => this.xLabelMap[item])
+        .filter(item => item !== undefined)
+      const valueArray = Object.values(this.chartData[yIndex]).slice(2)
+      namesArray.forEach((item, index) => pieData.push({ name: item, value: valueArray[index] }))
+      console.log(pieData)
+      this.chartOption = {
+        tooltip: {
+          trigger: 'item'
+        },
+        legend: {
+          top: '5%',
+          left: 'center'
+        },
+        series: [
+          {
+            type: 'pie',
+            radius: ['30%', '60%'],
+            avoidLabelOverlap: false,
+            itemStyle: {
+              borderRadius: 10,
+              borderColor: '#fff',
+              borderWidth: 2
+            },
+            label: {
+              show: false,
+              position: 'center'
+            },
+            emphasis: {
+              label: {
+                show: true,
+                fontSize: '15',
+                fontWeight: 'bold'
+              }
+            },
+            labelLine: {
+              show: false
+            },
+            data: pieData
+          }
+        ]
+      }
+      this.chart.clear()
+      this.chart.setOption(this.chartOption)
     },
     columnChartFunc() {
       this.columnChartSource = []
       this.columnChartSeries = []
 
-      const newDataSource = this.chartData.map(item => _.omit(item, ['c_yAxis']))
+      const newDataSource = this.chartData.map(item => _.omit(item, ['e_yAxis']))
       this.columnChartSource.push(['product'].concat(Object.values(this.xLabelMap).splice(0)))
       newDataSource.forEach(item => {
         this.columnChartSource.push(Object.values(item))
@@ -573,7 +637,7 @@ export default {
     closeTag(item, axias) {
       this.labelGC.indexOf(item) === -1 ? this.labelGC.push(item) : this.labelGC.splice(this.labelGC.indexOf(item), 1)
       if (axias === 'x') {
-        // console.log(this.barChartSource)
+        // TODO 转为折线图
       } else {
         this.closeTagInnerFunc(item)
       }
@@ -594,6 +658,7 @@ export default {
           break
       }
     },
+    // 标签删除点击时间
     closeTagInnerFunc(item) {
       let needDeleteId
       switch (this.checkedChart[0]) {
@@ -608,12 +673,6 @@ export default {
             this.barChartGC[this.barChartSource[needDeleteId][0]] = this.barChartSource[needDeleteId]
             this.barChartSource.splice(needDeleteId, 1)
           }
-          // }else {
-          //   for (let i = 1; i < this.barChartSource.length; i++) {
-          //
-          //   }
-          //   this.barChartGC[item]
-          // }
           this.chartChange = true
           break
         case 'column':
@@ -637,6 +696,7 @@ export default {
           break
       }
     },
+
     filterAddResult() {
       // 添加到显示数组
       const tagName = this.filterFirstSelect + ' ' + this.filterSecondSelect + ' ' + this.filterSelectNum
@@ -684,14 +744,28 @@ export default {
       }
       console.log(JSON.stringify(this.filterResultJson))
     },
+    // 过滤确定按钮实现
     async filterSave() {
       await this.initData()
       this.filterVisible = false
     },
+
     async tableCalcFunc(func) {
       this.func = func
       await this.initData()
-    }
+    },
+    // async reback() {
+    //   this.func = ''
+    //   await this.initData()
+    // },
+    async timeSelectFunc(val) {
+      this.timeSelect = val
+      await this.initData()
+    },
+    pieTagClick(item) {
+      this.pieSelect = item
+      this.pieChartFunc(this.yLabelList.indexOf(item))
+    },
   }
 }
 
@@ -701,4 +775,10 @@ export default {
 /deep/ .el-transfer-panel {
   width: 300px !important;
 }
+/*.el-checkbox+.el-checkbox {*/
+/*  margin-left: 0px;*/
+/*}*/
+/*.el-checkbox {*/
+/*  margin-right: 25px;*/
+/*}*/
 </style>
