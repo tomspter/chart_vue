@@ -176,7 +176,7 @@
           <el-card>
             <el-radio-group v-model="filterFirstSelect">
               <el-row v-for="item in sheetEditData" :key="item.key">
-                <el-radio :label="item.key" style="margin-bottom: 10px">{{ item.label }}</el-radio>
+                <el-radio :label="item.label" style="margin-bottom: 10px">{{ item.label }}</el-radio>
               </el-row>
             </el-radio-group>
           </el-card>
@@ -214,6 +214,23 @@
       <span slot="footer" class="dialog-footer">
         <el-button @click="filterVisible = false;">取 消</el-button>
         <el-button type="primary" @click="filterSave">确 定</el-button>
+      </span>
+    </el-dialog>
+    <!--    新增指标-->
+    <el-dialog title="新增指标" :visible.sync="dataAddVisible" width="60%" destroy-on-close :before-close="beforeDialogClose">
+      <div style="margin-bottom: 20px">
+        <el-radio v-model="addDataRC" label="xAxis">行</el-radio>
+        <el-radio v-model="addDataRC" label="yAxis">列</el-radio>
+      </div>
+      <el-col :span="8">
+        <el-card>
+          <el-tag v-for="item in sheetEditData" :key="item.label" type="warning" style="margin-right: 50px">{{ item.label }}</el-tag>
+        </el-card>
+      </el-col>
+      <el-col :span="16"></el-col>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="dataAddVisible = false;">取 消</el-button>
+        <el-button type="primary">确 定</el-button>
       </span>
     </el-dialog>
   </div>
@@ -363,7 +380,9 @@ export default {
       type: 'row',
       func: '',
       chartRightUtil: true,
-      pieSelect: ''
+      pieSelect: '',
+      dataAddVisible: false,
+      addDataRC: 'xAxis'
     }
   },
   computed: {
@@ -411,8 +430,10 @@ export default {
     filterEditRC(val) {
       this.filterEditInitData(val)
     },
+    addDataRC(val) {
+      this.addDataInitData(val)
+    },
     listenFilterInput(val) {
-      console.log(this.xLableList)
       console.log('筛选条件:', val)
       if (val.filterFirstSelect !== '' && val.filterSecondSelect !== '' && val.filterSelectNum !== 0) {
         this.filterCanClick = true
@@ -447,14 +468,13 @@ export default {
       this.chartData.map(item => item['c_yAxis']).forEach(item => {
         this.yLabelList.push(item)
       })
-      // let index = 0
-      // this.chartData = result.data['dataTable'].map(item => Object.assign({}, item, {id: index++}))
       this.timeSelect = ''
       this.isOk = true
       if (this.checkedChart[0] !== '') {
         this.chartReback(this.checkedChart[0])
       }
       this.func = ''
+      this.filterResultJson = ''
     },
     barChartFunc() {
       this.barChartSource = []
@@ -575,6 +595,8 @@ export default {
     tableChange(val) {
       switch (val) {
         case '1':
+          this.addDataInitData('xAxis')
+          this.dataAddVisible = true
           break
         case '2':
           this.filterEditInitData('xAxis')
@@ -605,8 +627,8 @@ export default {
       }
       // 纵坐标填充
       else {
-        this.chartData.map(item => item['e_yAxis']).forEach(item => {
-          this.sheetEditData.push({ key: item, label: item })
+        this.chartData.map(item => [item['e_yAxis'], item['c_yAxis']]).forEach(item => {
+          this.sheetEditData.push({ key: item[0], label: item[1] })
         })
       }
     },
@@ -628,8 +650,23 @@ export default {
       }
       // 纵坐标填充
       else {
-        this.chartData.map(item => item['e_yAxis']).forEach(item => {
+        this.chartData.map(item => [item['e_yAxis'], item['c_yAxis']]).forEach(item => {
+          this.sheetEditData.push({ key: item[0], label: item[1] })
+        })
+      }
+    },
+    addDataInitData(type) {
+      this.dataAddVisible = true
+      this.sheetEditData = []
+      if (type === 'xAxis') {
+        Object.values(this.xLabelMap).forEach(item => {
           this.sheetEditData.push({ key: item, label: item })
+        })
+      }
+      // 纵坐标填充
+      else {
+        this.chartData.map(item => [item['e_yAxis'], item['c_yAxis']]).forEach(item => {
+          this.sheetEditData.push({ key: item[0], label: item[1] })
         })
       }
     },
@@ -706,11 +743,13 @@ export default {
       let jsonSymbol
       if (this.filterEditRC === 'xAxis') {
         this.type = 'row'
+        console.log('select row')
         jsonKey = this.xLableList.filter(item => item.cname === this.filterFirstSelect)[0].ename
         jsonSymbol = this.filterOption.filter(item => item.label === this.filterSecondSelect)[0].value
       } else {
         this.type = 'column'
-        jsonKey = this.yLabelList.filter(item => item === this.filterFirstSelect)[0]
+        console.log('select column')
+        jsonKey = this.chartData.filter(item => item['c_yAxis'] === this.filterFirstSelect)[0].e_yAxis
         jsonSymbol = this.filterOption.filter(item => item.label === this.filterSecondSelect)[0].value
       }
       // 添加到发送结果
@@ -765,7 +804,7 @@ export default {
     pieTagClick(item) {
       this.pieSelect = item
       this.pieChartFunc(this.yLabelList.indexOf(item))
-    },
+    }
   }
 }
 
