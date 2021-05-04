@@ -1,9 +1,17 @@
 <template xmlns:el-col="http://www.w3.org/1999/html">
   <div>
     <!--    搜索区域-->
-    <el-row type="flex" align="middle" style="margin-top: 20px">
-      <el-col :span="1" />
-      <el-col :span="4">
+    <el-row type="flex" align="middle" style="margin-top: 20px" justify="center">
+      <el-col :span="3" />
+      <el-col :span="1">图表查看:</el-col>
+      <el-col :span="5">
+        <el-checkbox-group v-model="checkedChart" :max="1">
+          <el-checkbox-button v-for="item in checkboxLabel" :key="item.value" :label="item.value">
+            {{ item.label }}
+          </el-checkbox-button>
+        </el-checkbox-group>
+      </el-col>
+      <el-col :span="3">
         <el-dropdown @command="timeSelectFunc">
           <span class="el-dropdown-link">
             时间跨度选择<i class="el-icon-arrow-down el-icon--right" />
@@ -15,14 +23,6 @@
             </el-dropdown-item>
           </el-dropdown-menu>
         </el-dropdown>
-      </el-col>
-      <el-col :span="1">图表查看</el-col>
-      <el-col :span="6">
-        <el-checkbox-group v-model="checkedChart" :max="1">
-          <el-checkbox-button v-for="item in checkboxLabel" :key="item.value" :label="item.value">
-            {{ item.label }}
-          </el-checkbox-button>
-        </el-checkbox-group>
       </el-col>
       <el-col :span="2">
         <el-dropdown @command="tableChange">
@@ -430,6 +430,7 @@ export default {
     async initData() {
       this.yLabelList = []
       this.xLabelMap = {}
+      // 接口请求
       const params = new URLSearchParams()
       params.append('tablename', 'income_engelcoefficient_info')
       params.append('count', this.timeSelect === '' ? 5 : this.timeSelect)
@@ -439,6 +440,7 @@ export default {
       params.append('func', this.func)
       const result = await getData(params)
       console.log(result.data)
+
       this.xLableList = result.data['xLabelList']
       result.data['xLabelList'].forEach(item => {
         this.xLabelMap[item.pointer] = item.cname
@@ -447,15 +449,18 @@ export default {
       this.chartData.map(item => item['c_yAxis']).forEach(item => {
         this.yLabelList.push(item)
       })
+
       // let index = 0
       // this.chartData = result.data['dataTable'].map(item => Object.assign({}, item, {id: index++}))
       this.timeSelect = ''
       this.isOk = true
+      this.func = ''
+
       if (this.checkedChart[0] !== '') {
         this.chartReback(this.checkedChart[0])
       }
-      this.func = ''
     },
+    // 条形图功能
     barChartFunc() {
       this.barChartSource = []
       this.barChartSeries = []
@@ -472,18 +477,28 @@ export default {
         grid: {
           right: '50px'
         },
-        legend: {},
         tooltip: {},
+        toolbox: {
+          feature: {
+            magicType: { show: true, type: ['line', 'bar', 'stack'] },
+            saveAsImage: { show: true }
+          },
+          right: '50px'
+        },
+        legend: {},
         dataset: {
           source: this.barChartSource
         },
-        xAxis: { type: 'category' },
+        xAxis: { type: 'category', axisPointer: {
+          type: 'shadow'
+        }},
         yAxis: {},
         series: this.barChartSeries
       }
       this.chart.clear()
       this.chart.setOption(this.chartOption)
     },
+    // 饼图功能
     pieChartFunc(yIndex) {
       const pieData = []
       console.log(this.yLabelList, this.xLableList, this.chartData, this.xLabelMap)
@@ -500,6 +515,15 @@ export default {
         legend: {
           top: '5%',
           left: 'center'
+        },
+        grid: {
+          right: '50px'
+        },
+        toolbox: {
+          feature: {
+            saveAsImage: { show: true }
+          },
+          right: '50px'
         },
         series: [
           {
@@ -532,6 +556,7 @@ export default {
       this.chart.clear()
       this.chart.setOption(this.chartOption)
     },
+    // 柱状图功能
     columnChartFunc() {
       this.columnChartSource = []
       this.columnChartSeries = []
@@ -547,6 +572,16 @@ export default {
       this.chartOption = {
         legend: {},
         tooltip: {},
+        toolbox: {
+          feature: {
+            magicType: { show: true, type: ['bar', 'stack'] },
+            saveAsImage: { show: true }
+          },
+          right: '50px'
+        },
+        grid: {
+          right: '50px'
+        },
         dataset: {
           source: this.columnChartSource
         },
@@ -638,6 +673,7 @@ export default {
       this.labelGC.indexOf(item) === -1 ? this.labelGC.push(item) : this.labelGC.splice(this.labelGC.indexOf(item), 1)
       if (axias === 'x') {
         // TODO 转为折线图
+        this.changeLine(item)
       } else {
         this.closeTagInnerFunc(item)
       }
@@ -661,39 +697,18 @@ export default {
     // 标签删除点击时间
     closeTagInnerFunc(item) {
       let needDeleteId
-      switch (this.checkedChart[0]) {
-        case 'bar':
-          for (let i = 1; i < this.barChartSource.length; i++) {
-            if (this.barChartSource[i][0] === item) {
-              needDeleteId = i
-              break
-            }
+      if (this.checkedChart[0] === 'bar') {
+        for (let i = 1; i < this.barChartSource.length; i++) {
+          if (this.barChartSource[i][0] === item) {
+            needDeleteId = i
+            break
           }
-          if (needDeleteId !== undefined) {
-            this.barChartGC[this.barChartSource[needDeleteId][0]] = this.barChartSource[needDeleteId]
-            this.barChartSource.splice(needDeleteId, 1)
-          }
-          this.chartChange = true
-          break
-        case 'column':
-          for (let i = 1; i < this.columnChartSource.length; i++) {
-            if (this.columnChartSource[i][0] === item) {
-              needDeleteId = i
-              break
-            }
-          }
-          if (needDeleteId !== undefined) {
-            // this.barChartGC[this.columnChartSource[needDeleteId][0]] = this.columnChartSource[needDeleteId]
-            this.columnChartSource.splice(needDeleteId, 1)
-          }
-          // }else {
-          //   for (let i = 1; i < this.barChartSource.length; i++) {
-          //
-          //   }
-          //   this.barChartGC[item]
-          // }
-          this.chartChange = true
-          break
+        }
+        if (needDeleteId !== undefined) {
+          this.barChartGC[this.barChartSource[needDeleteId][0]] = this.barChartSource[needDeleteId]
+          this.barChartSource.splice(needDeleteId, 1)
+        }
+        this.chartChange = true
       }
     },
 
@@ -754,10 +769,7 @@ export default {
       this.func = func
       await this.initData()
     },
-    // async reback() {
-    //   this.func = ''
-    //   await this.initData()
-    // },
+    // 时间跨度选择
     async timeSelectFunc(val) {
       this.timeSelect = val
       await this.initData()
@@ -766,6 +778,20 @@ export default {
       this.pieSelect = item
       this.pieChartFunc(this.yLabelList.indexOf(item))
     },
+    changeLine(value) {
+      // const key = Object.entries(this.xLabelMap).filter(item=>item[1]===value)[0]
+      console.log(this.barChartSource)
+      const lineData = []
+      const valueIndex = this.barChartSource[0].indexOf(value)
+      this.barChartSource.forEach(item => { lineData.push(item[valueIndex]) })
+      console.log(lineData)
+      this.barChartSeries.push({
+        name: lineData[0],
+        type: 'line',
+        data: lineData.splice(0)
+      })
+      this.chart.setOption(this.chartOption)
+    }
   }
 }
 
