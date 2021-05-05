@@ -76,15 +76,15 @@
       <el-col :span="4">
         <!--        右侧功能栏-->
         <el-row type="flex" align="middle">
-          <el-col :span="12">
+          <el-col :span="14">
             <el-switch
               v-model="changeChartDirection"
               active-text="行展示"
               inactive-text="列展示"
             />
           </el-col>
-          <el-col :span="12">
-            <el-button plain size="medium" type="primary" icon="el-icon-refresh" @click="chartReback(checkedChart[0])">
+          <el-col :span="10">
+            <el-button plain size="small" type="primary" icon="el-icon-refresh" @click="chartReback(checkedChart[0])">
               还原
             </el-button>
           </el-col>
@@ -166,14 +166,17 @@
 
     <!--    筛选页面-->
     <el-dialog title="筛选" :visible.sync="filterVisible" width="60%" destroy-on-close :before-close="beforeDialogClose">
-      <div style="margin-bottom: 20px">
-        <el-radio v-model="filterEditRC" label="xAxis">行</el-radio>
-        <el-radio v-model="filterEditRC" label="yAxis">列</el-radio>
-      </div>
       <el-row>
         <!--        第一选择框-->
         <el-col :span="8">
           <el-card>
+            <div slot="header" class="clearfix">
+              <span>行/列</span>
+              <div style="float: right">
+                <el-radio v-model="filterEditRC" label="xAxis">行</el-radio>
+                <el-radio v-model="filterEditRC" label="yAxis">列</el-radio>
+              </div>
+            </div>
             <el-radio-group v-model="filterFirstSelect">
               <el-row v-for="item in sheetEditData" :key="item.key">
                 <el-radio :label="item.label" style="margin-bottom: 10px">{{ item.label }}</el-radio>
@@ -199,7 +202,7 @@
             round
             :type="filterCanClick?'success':'danger'"
             icon="el-icon-plus"
-            @click="filterAddResult"
+            @click="filterCanClick?filterAddResult:$message.warning('请输入完整参数后再点击按钮')"
           />
         </el-col>
         <!--        选择结果-->
@@ -217,20 +220,60 @@
       </span>
     </el-dialog>
     <!--    新增指标-->
-    <el-dialog title="新增指标" :visible.sync="dataAddVisible" width="60%" destroy-on-close :before-close="beforeDialogClose">
-      <div style="margin-bottom: 20px">
-        <el-radio v-model="addDataRC" label="xAxis">行</el-radio>
-        <el-radio v-model="addDataRC" label="yAxis">列</el-radio>
-      </div>
-      <el-col :span="8">
-        <el-card>
-          <el-tag v-for="item in sheetEditData" :key="item.label" type="warning" style="margin-right: 50px">{{ item.label }}</el-tag>
-        </el-card>
-      </el-col>
-      <el-col :span="16"></el-col>
+    <el-dialog
+      title="新增指标"
+      :visible.sync="dataAddVisible"
+      width="60%"
+      destroy-on-close
+      :before-close="beforeDialogClose"
+    >
+      <el-row>
+        <el-col :span="11" style="margin-right: 10px">
+          <el-card style="margin-bottom: 10px;">
+            <div slot="header" class="clearfix">
+              <span>行/列</span>
+              <div style="float: right">
+                <el-radio v-model="addDataRC" label="xAxis">行</el-radio>
+                <el-radio v-model="addDataRC" label="yAxis">列</el-radio>
+              </div>
+            </div>
+            <el-tag
+              v-for="item in sheetEditData"
+              :key="item.label"
+              type="warning"
+              style="margin-right: 500px;margin-bottom: 10px"
+              @click="addDataClickTag(item,false)"
+            >{{ item.label }}
+            </el-tag>
+          </el-card>
+          <el-card>
+            <el-tag
+              v-for="item in ['+','-','*','/']"
+              :key="item"
+              style="margin-right: 10px"
+              @click="addDataClickTag(item,true)"
+            >{{ item }}
+            </el-tag>
+          </el-card>
+        </el-col>
+        <el-col :span="12">
+          <el-input v-model="addDataNewField" placeholder="请输入新增字段名称" style="margin-bottom: 10px" />
+          <el-card>
+            <el-tag
+              v-for="item in addDataObject"
+              :type="!item.isSymbol?'warning':''"
+              style="margin-right: 10px;margin-bottom: 10px"
+              closable
+              @close="addDataCloseTag(item)"
+            >{{ item.label }}
+            </el-tag>
+          </el-card>
+        </el-col>
+      </el-row>
+
       <span slot="footer" class="dialog-footer">
         <el-button @click="dataAddVisible = false;">取 消</el-button>
-        <el-button type="primary">确 定</el-button>
+        <el-button type="primary" @click="addDataSave">确 定</el-button>
       </span>
     </el-dialog>
   </div>
@@ -382,7 +425,11 @@ export default {
       chartRightUtil: true,
       pieSelect: '',
       dataAddVisible: false,
-      addDataRC: 'xAxis'
+      addDataRC: 'xAxis',
+      addDataObject: [],
+      addDataSendArray: [],
+      addDataNewField: '',
+      sheetEditModelArray: []
     }
   },
   computed: {
@@ -448,6 +495,10 @@ export default {
   created() {
     this.initData()
   },
+  beforeDestroy() {
+    echarts.dispose(this.chart)
+    this.chart = undefined
+  },
   methods: {
     async initData() {
       this.yLabelList = []
@@ -460,6 +511,9 @@ export default {
       params.append('search_list', JSON.stringify(this.filterResultJson))
       params.append('type', this.type)
       params.append('func', this.func)
+      params.append('formula', this.addDataSendArray.join())
+      params.append('newField', this.addDataNewField)
+      params.append('filter_array', this.sheetEditModelArray.join())
       const result = await getData(params)
       console.log(result.data)
 
@@ -481,6 +535,9 @@ export default {
       }
       this.func = ''
       this.filterResultJson = ''
+      this.addDataSendArray = []
+      this.addDataNewField = ''
+      this.sheetEditModelArray = []
     },
     // 条形图功能
     barChartFunc() {
@@ -505,15 +562,18 @@ export default {
             magicType: { show: true, type: ['line', 'bar', 'stack'] },
             saveAsImage: { show: true }
           },
+          bottom: '5px',
           right: '50px'
         },
         legend: {},
         dataset: {
           source: this.barChartSource
         },
-        xAxis: { type: 'category', axisPointer: {
-          type: 'shadow'
-        }},
+        xAxis: {
+          type: 'category', axisPointer: {
+            type: 'shadow'
+          }
+        },
         yAxis: {},
         series: this.barChartSeries
       }
@@ -545,6 +605,7 @@ export default {
           feature: {
             saveAsImage: { show: true }
           },
+          bottom: '5px',
           right: '50px'
         },
         series: [
@@ -599,6 +660,7 @@ export default {
             magicType: { show: true, type: ['bar', 'stack'] },
             saveAsImage: { show: true }
           },
+          bottom: '5px',
           right: '50px'
         },
         grid: {
@@ -614,6 +676,7 @@ export default {
       this.chart.clear()
       this.chart.setOption(this.chartOption)
     },
+    // 报表管理功能菜单
     async sheetChange(val) {
       // 编辑
       if (val === '1') {
@@ -629,6 +692,7 @@ export default {
 
       }
     },
+    // 数据管理功能菜单
     tableChange(val) {
       switch (val) {
         case '1':
@@ -644,14 +708,26 @@ export default {
           break
       }
     },
+    // 弹窗关闭前
     beforeDialogClose(done) {
       this.sheetSelect = ''
       done()
     },
-    sheetEditModelSave() {
+    // 报表管理->编辑保存
+    async sheetEditModelSave() {
+      console.log(this.sheetEditModel, this.xLableList)
+      this.sheetEditModel.forEach(item => {
+        const number = Object.values(this.xLabelMap).indexOf(item)
+        if (number !== -1) {
+          this.sheetEditModelArray.push(Object.keys(this.xLabelMap)[number])
+        }
+      })
+      console.log('ename输出', this.sheetEditModelArray)
+      await this.initData()
       this.sheetSelect = ''
       this.sheetEditVisible = false
     },
+    // 编辑初始化
     sheetEditInitData(type) {
       this.sheetEditVisible = true
       this.sheetEditModel = []
@@ -669,6 +745,7 @@ export default {
         })
       }
     },
+    // 筛选初始化
     filterEditInitData(type) {
       this.filterVisible = true
       this.sheetEditModel = []
@@ -692,13 +769,17 @@ export default {
         })
       }
     },
+    // 新增指标初始化
     addDataInitData(type) {
       this.dataAddVisible = true
+      this.addDataObject = []
       this.sheetEditData = []
       if (type === 'xAxis') {
-        Object.values(this.xLabelMap).forEach(item => {
-          this.sheetEditData.push({ key: item, label: item })
+        console.log(this.xLabelMap)
+        Object.keys(this.xLabelMap).forEach((item, index) => {
+          this.sheetEditData.push({ key: item, label: Object.values(this.xLabelMap)[index] })
         })
+        console.log(this.sheetEditData)
       }
       // 纵坐标填充
       else {
@@ -750,7 +831,7 @@ export default {
         this.chartChange = true
       }
     },
-
+    // 筛选添加到右侧card中
     filterAddResult() {
       // 添加到显示数组
       const tagName = this.filterFirstSelect + ' ' + this.filterSecondSelect + ' ' + this.filterSelectNum
@@ -805,7 +886,7 @@ export default {
       await this.initData()
       this.filterVisible = false
     },
-
+    // 对行运算
     async tableCalcFunc(func) {
       this.func = func
       await this.initData()
@@ -815,24 +896,59 @@ export default {
       this.timeSelect = val
       await this.initData()
     },
+    // 饼图中横坐标选择
     pieTagClick(item) {
       this.pieSelect = item
       this.pieChartFunc(this.yLabelList.indexOf(item))
     },
+    // 将某一指标转为折线图
     changeLine(value) {
-      // const key = Object.entries(this.xLabelMap).filter(item=>item[1]===value)[0]
-      console.log(this.barChartSource)
       const lineData = []
       const valueIndex = this.barChartSource[0].indexOf(value)
-      this.barChartSource.forEach(item => { lineData.push(item[valueIndex]) })
-      console.log(lineData)
+      this.barChartSource.forEach(item => {
+        lineData.push(item[valueIndex])
+      })
+      console.log('line数组', lineData.slice(1))
       this.barChartSeries.push({
         name: lineData[0],
         type: 'line',
-        data: lineData.splice(0)
+        data: lineData.slice(1)
       })
       this.chart.setOption(this.chartOption)
-    }
+    },
+    // 新增指标到右侧
+    addDataClickTag(item, isSymbol) {
+      // 判断是否和之前重复
+      if (this.addDataObject.length > 0) {
+        if (this.addDataObject[this.addDataObject.length - 1]['isSymbol'] === isSymbol) {
+          return this.$message.error('请按照语法规则添加')
+        }
+      }
+      if (isSymbol) {
+        const symbolObject = {
+          key: item,
+          label: item,
+          isSymbol: isSymbol
+        }
+        this.addDataObject.push(symbolObject)
+      } else {
+        item.isSymbol = isSymbol
+        this.addDataObject.push(item)
+      }
+      this.addDataSendArray = this.addDataObject.map(item => item.key)
+      console.log('添加对象数组', this.addDataObject, this.addDataSendArray)
+    },
+    addDataCloseTag(item) {
+      console.log(item)
+      // 先删除对象
+      this.addDataObject.splice(this.addDataObject.indexOf(item), 1)
+      // 重新生成sendArray
+      this.addDataSendArray = this.addDataObject.map(item => item.key)
+    },
+    // 新增指标确定按钮
+    async addDataSave() {
+      await this.initData()
+      this.dataAddVisible = false
     }
   }
 }
@@ -842,6 +958,14 @@ export default {
 <style scoped>
 /deep/ .el-transfer-panel {
   width: 300px !important;
+}
+.clearfix:before,
+.clearfix:after {
+  display: table;
+  content: "";
+}
+.clearfix:after {
+  clear: both
 }
 /*.el-checkbox+.el-checkbox {*/
 /*  margin-left: 0px;*/

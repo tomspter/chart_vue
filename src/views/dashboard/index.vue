@@ -1,7 +1,22 @@
 <template>
   <div>
-<!--    <div class="dashboard-text">name: {{ name }}</div>-->
-    <div id="chart" ref="chart"/>
+    <div class="dashboard-text">name: {{ name }}</div>
+    <el-row>
+      <el-col :span="12">
+        <el-row>
+          <el-col :span="12">
+            <div id="memory" ref="memory" style="width:100%;height: 400px" />
+          </el-col>
+          <el-col :span="12">
+            <div id="cpu" ref="cpu" style="width: 100%;height: 400px " />
+          </el-col>
+        </el-row>
+      </el-col>
+      <el-col :span="12">
+        <div id="chart" ref="chart" style="width: 100%;height: 600px" />
+      </el-col>
+    </el-row>
+
   </div>
 </template>
 
@@ -14,6 +29,8 @@ export default {
   data() {
     return {
       chart: undefined,
+      memoryChart: undefined,
+      cpuChart: undefined,
       timeUpdatedStatus: {
         second: false,
         minute: false,
@@ -201,7 +218,109 @@ export default {
           }]
         }]
       },
-      timer: undefined
+      memoryOption: {
+        series: [{
+          type: 'gauge',
+          axisLine: {
+            lineStyle: {
+              width: 30,
+              color: [
+                [0.3, '#67e0e3'],
+                [0.7, '#37a2da'],
+                [1, '#fd666d']
+              ]
+            }
+          },
+          pointer: {
+            itemStyle: {
+              color: 'auto'
+            }
+          },
+          axisTick: {
+            distance: -30,
+            length: 8,
+            lineStyle: {
+              color: '#fff',
+              width: 2
+            }
+          },
+          splitLine: {
+            distance: -30,
+            length: 30,
+            lineStyle: {
+              color: '#fff',
+              width: 4
+            }
+          },
+          axisLabel: {
+            color: 'auto',
+            distance: 40,
+            fontSize: 15
+          },
+          detail: {
+            valueAnimation: true,
+            formatter: '内存占用{value}%',
+            color: 'auto',
+            fontSize: 12
+          },
+          data: [{
+            value: 0
+          }]
+        }]
+      },
+      cpuOption: {
+        series: [{
+          type: 'gauge',
+          axisLine: {
+            lineStyle: {
+              width: 30,
+              color: [
+                [0.3, '#67e0e3'],
+                [0.7, '#37a2da'],
+                [1, '#fd666d']
+              ]
+            }
+          },
+          pointer: {
+            itemStyle: {
+              color: 'auto'
+            }
+          },
+          axisTick: {
+            distance: -30,
+            length: 8,
+            lineStyle: {
+              color: '#fff',
+              width: 2
+            }
+          },
+          splitLine: {
+            distance: -30,
+            length: 30,
+            lineStyle: {
+              color: '#fff',
+              width: 4
+            }
+          },
+          axisLabel: {
+            color: 'auto',
+            distance: 40,
+            fontSize: 15
+          },
+          detail: {
+            valueAnimation: true,
+            formatter: 'CPU占用{value}%',
+            color: 'auto',
+            fontSize: 12
+          },
+          data: [{
+            value: 0
+          }]
+        }]
+      },
+      timer: undefined,
+      memoryTimer: undefined,
+      cpuTimer: undefined
     }
   },
   computed: {
@@ -211,13 +330,28 @@ export default {
   },
   mounted() {
     this.chart = echarts.init(document.getElementById('chart'))
-    // this.chartInit()
+    this.chart.setOption(this.option)
+    this.memoryChart = echarts.init(document.getElementById('memory'))
+    this.memoryChart.setOption(this.memoryOption)
+    this.cpuChart = echarts.init(document.getElementById('cpu'))
+    this.cpuChart.setOption(this.cpuOption)
   },
   created() {
     this.timeControl()
+    this.memoryTimeControl()
+    this.cpuTimeControl()
   },
   beforeDestroy() {
     clearInterval(this.timer)
+    clearInterval(this.memoryTimer)
+    clearInterval(this.cpuTimer)
+    echarts.dispose(this.chart)
+    echarts.dispose(this.memoryChart)
+    echarts.dispose(this.cpuChart)
+    this.chart = undefined
+    this.memoryChart = undefined
+    this.cpuChart = undefined
+
   },
   methods: {
     updateSeries(time, series, type) {
@@ -251,6 +385,18 @@ export default {
         this.chart.setOption(this.option, true)
         date = null
       }, 1000)
+    },
+    memoryTimeControl() {
+      this.memoryTimer = setInterval(() => {
+        this.memoryOption.series[0].data[0].value = (Math.random() * 100).toFixed(2) - 0
+        this.memoryChart.setOption(this.memoryOption, true)
+      }, 2000)
+    },
+    cpuTimeControl() {
+      this.cpuTimer = setInterval(() => {
+        this.cpuOption.series[0].data[0].value = (Math.random() * 100).toFixed(2) - 0
+        this.cpuChart.setOption(this.cpuOption, true)
+      }, 2000)
     }
   }
 }
@@ -263,7 +409,7 @@ export default {
   }
 
   &-text {
-    font-size: 30px;
+    font-size: 20px;
     line-height: 46px;
   }
 }
