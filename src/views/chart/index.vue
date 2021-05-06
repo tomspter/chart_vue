@@ -145,8 +145,8 @@
       destroy-on-close
     >
       <div style="margin-bottom: 20px">
-        <el-radio v-model="sheetEditRC" label="xAxis">行</el-radio>
-        <el-radio v-model="sheetEditRC" label="yAxis">列</el-radio>
+        <el-radio v-model="sheetEditRC" label="yAxis">行</el-radio>
+        <el-radio v-model="sheetEditRC" label="xAxis">列</el-radio>
       </div>
       <el-transfer
         v-model="sheetEditModel"
@@ -538,6 +538,7 @@ export default {
       this.addDataSendArray = []
       this.addDataNewField = ''
       this.sheetEditModelArray = []
+      this.type = 'row'
     },
     // 条形图功能
     barChartFunc() {
@@ -715,13 +716,19 @@ export default {
     },
     // 报表管理->编辑保存
     async sheetEditModelSave() {
-      console.log(this.sheetEditModel, this.xLableList)
-      this.sheetEditModel.forEach(item => {
-        const number = Object.values(this.xLabelMap).indexOf(item)
-        if (number !== -1) {
-          this.sheetEditModelArray.push(Object.keys(this.xLabelMap)[number])
-        }
-      })
+      console.log(this.sheetEditModel, this.xLableList, this.sheetEditRC)
+      if (this.sheetEditRC === 'xAxis') {
+        this.type = 'row'
+        this.sheetEditModel.forEach(item => {
+          const number = Object.values(this.xLabelMap).indexOf(item)
+          if (number !== -1) {
+            this.sheetEditModelArray.push(Object.keys(this.xLabelMap)[number])
+          }
+        })
+      } else {
+        this.type = 'column'
+        this.sheetEditModelArray = this.sheetEditModel
+      }
       console.log('ename输出', this.sheetEditModelArray)
       await this.initData()
       this.sheetSelect = ''
